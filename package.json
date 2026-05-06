@@ -1,6 +1,6 @@
 {
   "name": "gcs-cache-action",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "Cache your workload to a Google Cloud Storage bucket",
   "scripts": {
     "build": "tsc",
@@ -57,7 +57,7 @@
     "@types/tmp": "0.2.3",
     "@typescript-eslint/eslint-plugin": "4.33.0",
     "@typescript-eslint/parser": "4.33.0",
-    "@vercel/ncc": "0.36.1",
+    "@vercel/ncc": "0.38.4",
     "eslint": "7.32.0",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-config-prettier": "8.7.0",

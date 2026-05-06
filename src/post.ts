@@ -8,8 +8,6 @@ import { CacheActionMetadata } from './gcs-utils';
 import { getState } from './state';
 import { createTar } from './tar-utils';
 
-import { exec } from 'child_process';
-
 async function main() {
   const state = getState();
 
