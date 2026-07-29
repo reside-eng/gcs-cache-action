@@ -1,6 +1,7 @@
 {
   "name": "gcs-cache-action",
-  "version": "2.0.0",
+  "version": "0.0.0-development",
+  "private": true,
   "description": "Cache your workload to a Google Cloud Storage bucket",
   "scripts": {
     "build": "tsc",
@@ -8,8 +9,7 @@
     "lint:fix": "eslint --fix src",
     "package": "npm run build && ncc build lib/main.js -m -o dist/main && ncc build lib/post.js -m -o dist/post",
     "test": "jest --passWithNoTests",
-    "prepare": "husky install",
-    "release": "np --message=\"chore: v%s\""
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
