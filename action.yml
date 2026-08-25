@@ -13,8 +13,15 @@ inputs:
     description: Key to use as cache identifier
     required: true
   restore-keys:
-    description: Substitution keys to use when cache miss
+    description: Substitution keys to use when cache miss (newline or comma separated)
     default: ''
+    required: false
+  fail-on-error:
+    description: >-
+      If true, cache errors fail the job instead of degrading to a cache
+      miss (restore) or a skipped save. Transient network errors are
+      retried with backoff either way.
+    default: 'false'
     required: false
 
 outputs:
