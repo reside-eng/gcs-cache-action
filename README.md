@@ -45,14 +45,31 @@ contain your target Google Cloud Storage bucket. **As simple as that.**
 
 This GitHub action can take several inputs to configure its behaviors:
 
-| Name         | Type     | Default | Example                                                               | Description                                                       |
-| ------------ | -------- | ------- | --------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| bucket       | String   | ø       | `my-ci-cache`                                                         | The name of the Google Cloud Storage bucket to use                |
-| path         | String[] | ø       | `node_modules`                                                        | One or more path to store                                         |
-| key          | String   | ø       | `node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}` | Key to use as cache name                                          |
-| restore-keys | String[] | ø       | `node-modules-${{ runner.os }}-`                                      | Alternative keys to use when looking for the best cache available |
+| Name          | Type     | Default | Example                                                               | Description                                                       |
+| ------------- | -------- | ------- | --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| bucket        | String   | ø       | `my-ci-cache`                                                         | The name of the Google Cloud Storage bucket to use                |
+| path          | String[] | ø       | `node_modules`                                                        | One or more path to store                                         |
+| key           | String   | ø       | `node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}` | Key to use as cache name                                          |
+| restore-keys  | String[] | ø       | `node-modules-${{ runner.os }}-`                                      | Alternative keys to use when looking for the best cache available |
+| fail-on-error | Boolean  | `false` | `true`                                                                | Fail the job on cache errors instead of degrading to a cache miss |
 
 **Note**: the `path` and `restore-keys` inputs can contains multiple value separated by a new line.
+
+## Error handling
+
+A cache is an optimization, not a dependency, so this action degrades
+gracefully instead of failing the job:
+
+- Transient network errors (GCS 5xx, connection resets, and 503s from the
+  GitHub OIDC token endpoint during Workload Identity auth) are retried
+  with exponential backoff and jitter.
+- If the restore still fails, the action logs a warning, outputs
+  `cache-hit: false` and lets the job continue without a cache.
+- If the save (post) step still fails, the action logs a warning and skips
+  the upload; the next run will rebuild the cache.
+
+Set `fail-on-error: true` to restore the previous behavior where any cache
+error fails the job.
 
 ## Outputs
 
