@@ -4,8 +4,8 @@ import { Storage, File, Bucket } from '@google-cloud/storage';
 import { promises as fs } from 'fs';
 
 import { ObjectMetadata } from './gcs-utils';
-import { getInputs, Inputs } from './inputs';
-import { messageOf, withRetries } from './retry';
+import { getFailOnError, getInputs, Inputs } from './inputs';
+import { failOpenOnUncaught, messageOf, withRetries } from './retry';
 import { CacheHitKindState, saveState } from './state';
 import { extractTar } from './tar-utils';
 
@@ -100,13 +100,6 @@ async function restore(
   core.debug(`Best match kind: ${bestMatchKind}.`);
 
   if (!bestMatch) {
-    saveState({
-      bucket: inputs.bucket,
-      path: inputs.path,
-      cacheHitKind: 'none',
-      targetFileName: exactFileName,
-    });
-    core.setOutput('cache-hit', 'false');
     console.log('😢 No cache candidate found.');
     return;
   }
@@ -128,14 +121,6 @@ async function restore(
   core.debug(`Best match compression method: ${compressionMethod}.`);
 
   if (!bestMatchMetadata || !compressionMethod) {
-    saveState({
-      bucket: inputs.bucket,
-      path: inputs.path,
-      cacheHitKind: 'none',
-      targetFileName: exactFileName,
-    });
-
-    core.setOutput('cache-hit', 'false');
     console.log('😢 No cache candidate found (missing metadata).');
     return;
   }
@@ -179,19 +164,22 @@ async function main() {
   const folderPrefix = `${github.context.repo.owner}/${github.context.repo.repo}`;
   const exactFileName = `${folderPrefix}/${inputs.key}.tar`;
 
+  // Pre-seed the miss result: state and outputs are last-write-wins, so even
+  // an uncaught crash mid-restore leaves the post step and downstream steps
+  // with a valid cache-miss result
+  saveState({
+    bucket: inputs.bucket,
+    path: inputs.path,
+    cacheHitKind: 'none',
+    targetFileName: exactFileName,
+  });
+  core.setOutput('cache-hit', 'false');
+
   try {
     await restore(inputs, bucket, exactFileName);
   } catch (err) {
     // A cache is an optimization, not a dependency: degrade to a cache miss
     // instead of failing the whole job (transient errors were already retried)
-    saveState({
-      bucket: inputs.bucket,
-      path: inputs.path,
-      cacheHitKind: 'none',
-      targetFileName: exactFileName,
-    });
-    core.setOutput('cache-hit', 'false');
-
     if (inputs.failOnError) throw err;
 
     core.warning(
@@ -201,6 +189,7 @@ async function main() {
   }
 }
 
+failOpenOnUncaught('restore', getFailOnError);
 void main()
   .catch((err: Error) => {
     core.error(err);

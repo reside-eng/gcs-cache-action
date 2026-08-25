@@ -102,6 +102,33 @@ export function isTransientError(err: unknown, depth = 0): boolean {
   return hasTransientNestedError(err, depth);
 }
 
+// Stream/event-emitter errors (e.g. inside the storage SDK's download
+// pipeline) escape every promise chain: catch them at the process level so
+// a cache failure can never take the job down unless fail-on-error is set
+export function failOpenOnUncaught(
+  phase: string,
+  shouldFailOnError: () => boolean,
+): void {
+  const handler = (err: unknown): void => {
+    const code = shouldFailOnError() ? 1 : 0;
+    if (code === 1) {
+      core.error(`Cache ${phase} hit an uncaught error: ${messageOf(err)}`);
+    } else {
+      core.warning(
+        `Cache ${phase} hit an uncaught error, continuing without cache: ${messageOf(
+          err,
+        )}`,
+      );
+    }
+    process.exitCode = code;
+    // Let stdout flush the annotation before exiting, with a hard fallback
+    setTimeout(() => process.exit(code), 2000).unref();
+    process.stdout.write('', () => process.exit(code));
+  };
+  process.on('uncaughtException', handler);
+  process.on('unhandledRejection', handler);
+}
+
 export interface RetryOptions {
   attempts?: number;
   baseDelayMs?: number;

@@ -1,8 +1,14 @@
-import { isTransientError, messageOf, withRetries } from './retry';
+import {
+  failOpenOnUncaught,
+  isTransientError,
+  messageOf,
+  withRetries,
+} from './retry';
 
 jest.mock('@actions/core', () => ({
   warning: jest.fn(),
   debug: jest.fn(),
+  error: jest.fn(),
 }));
 
 const REQUEST_FAILED = 'request failed';
@@ -82,6 +88,66 @@ describe('messageOf', () => {
     expect(messageOf(new Error('boom'))).toBe('boom');
     expect(messageOf({ message: 'nested' })).toBe('nested');
     expect(messageOf('plain string')).toBe('plain string');
+  });
+});
+
+describe('failOpenOnUncaught', () => {
+  type UncaughtHandler = (err: unknown) => void;
+  let onSpy: jest.SpyInstance;
+  let exitSpy: jest.SpyInstance;
+  let writeSpy: jest.SpyInstance;
+  const previousExitCode = process.exitCode;
+
+  beforeEach(() => {
+    onSpy = jest.spyOn(process, 'on').mockImplementation(() => process);
+    exitSpy = jest
+      .spyOn(process, 'exit')
+      .mockImplementation((() => undefined) as never);
+    writeSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation((_chunk, cb?: unknown) => {
+        if (typeof cb === 'function') (cb as () => void)();
+        return true;
+      });
+  });
+
+  afterEach(() => {
+    onSpy.mockRestore();
+    exitSpy.mockRestore();
+    writeSpy.mockRestore();
+    process.exitCode = previousExitCode;
+  });
+
+  function registeredHandler(event: string): UncaughtHandler {
+    const calls = onSpy.mock.calls as [string, UncaughtHandler][];
+    const call = calls.find(([name]) => name === event);
+    if (!call) throw new Error(`no handler registered for ${event}`);
+    return call[1];
+  }
+
+  it('registers handlers for uncaught exceptions and rejections', () => {
+    failOpenOnUncaught('restore', () => false);
+
+    expect(registeredHandler('uncaughtException')).toBeDefined();
+    expect(registeredHandler('unhandledRejection')).toBeDefined();
+  });
+
+  it('exits 0 when fail-on-error is disabled', () => {
+    failOpenOnUncaught('restore', () => false);
+
+    registeredHandler('uncaughtException')(new Error('boom'));
+
+    expect(process.exitCode).toBe(0);
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+
+  it('exits 1 when fail-on-error is enabled', () => {
+    failOpenOnUncaught('save', () => true);
+
+    registeredHandler('unhandledRejection')(new Error('boom'));
+
+    expect(process.exitCode).toBe(1);
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });
 

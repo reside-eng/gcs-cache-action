@@ -6,7 +6,7 @@ import { withFile as withTemporaryFile } from 'tmp-promise';
 
 import { CacheActionMetadata } from './gcs-utils';
 import { getFailOnError } from './inputs';
-import { messageOf, withRetries } from './retry';
+import { failOpenOnUncaught, messageOf, withRetries } from './retry';
 import { getState, State } from './state';
 import { createTar } from './tar-utils';
 
@@ -105,6 +105,7 @@ async function main() {
   }
 }
 
+failOpenOnUncaught('save', getFailOnError);
 void main()
   .catch((err: Error) => {
     core.error(err);
