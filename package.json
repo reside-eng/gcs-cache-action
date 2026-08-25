@@ -4,7 +4,7 @@
   "private": true,
   "description": "Cache your workload to a Google Cloud Storage bucket",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc",
     "lint": "eslint src",
     "lint:fix": "eslint --fix src",
     "package": "npm run build && ncc build lib/main.js -m -o dist/main && ncc build lib/post.js -m -o dist/post",
@@ -52,7 +52,6 @@
   "devDependencies": {
     "@commitlint/cli": "17.4.4",
     "@commitlint/config-conventional": "17.4.4",
-    "@types/jest": "^29.5.14",
     "@types/node": "^20.11.30",
     "@types/semver": "7.3.13",
     "@types/tmp": "0.2.3",
